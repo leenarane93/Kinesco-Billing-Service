@@ -1,0 +1,7 @@
+info: Apr-21-2023 11:17:56: 	Query : select * from envisage_dev.billinglog where bltimestamp >=1664582400 and bltimestamp<=1667088000 and sent is null order by blrecid;
+info: Apr-21-2023 11:17:59: 	Processing 0
+info: Apr-21-2023 11:18:37: 	Query 2 : select * from envisage_dev.mtrinstallconfig where micmtrsrno = '00A1000920177068'
+info: Apr-21-2023 11:18:38: 	GetConsumerTarrif Error : TypeError: Cannot read properties of undefined (reading 'micconsumerid')
+Query : undefined
+info: Apr-21-2023 11:18:50: 	Query : select * from envisage_dev.billinglog where bltimestamp >=1664582400 and bltimestamp<=1667088000 and sent is null order by blrecid;
+info: Apr-21-2023 11:18:51: 	Processing 0

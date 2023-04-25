@@ -1,0 +1,9 @@
+info: Apr-18-2023 12:46:47: 	ProcessBilling : [object Object]
+info: Apr-18-2023 12:47:51: 	ProcessBilling : [object Object]
+info: Apr-18-2023 12:47:51: 	Process Billing Error : TypeError: dbConf.query is not a function
+info: Apr-18-2023 12:48:03: 	ProcessBilling : [object Object]
+info: Apr-18-2023 12:48:03: 	Process Billing Error : TypeError: dbConf.query is not a function
+info: Apr-18-2023 12:48:19: 	ProcessBilling : [object Object]
+info: Apr-18-2023 12:48:19: 	Process Billing Error : TypeError: dbConf.query is not a function
+info: Apr-18-2023 12:48:32: 	ProcessBilling : [object Object]
+info: Apr-18-2023 12:48:32: 	Process Billing Error : TypeError: dbConf.query is not a function

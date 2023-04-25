@@ -1,0 +1,1 @@
+info: Apr-19-2023 10:15:36: 	Query : select * from envisage_dev.billinglog where bltimestamp >=1664582400 and bltimestamp<=1667088000 and sent is null order by blrecid;
