@@ -30,8 +30,8 @@ async function ValidateDate() {
         var toepoch = epoch;
         var billmonth = firstDay.getMonth();
 
-        fromTime = 1677628800;
-        toTime = 1680307199;
+        fromTime = 1680307200;
+        toTime = 1682812800;
 
         //GetBillingData(fromTime, toTime, 03, firstDay, lastDay);
         _singlePhaseBill.GetBillingDetails(fromTime, toTime);
