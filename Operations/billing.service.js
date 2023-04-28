@@ -9,6 +9,7 @@ const billGen = require("../ViewModels/Bill_Generate");
 const sourcePath = "D:\\Env_Temp_std\\";
 const _common = require("./common.service");
 const _singlePhaseBill = require("./single_phase.billing");
+//const _moments = require("moment");
 //GetBillingData(1680307200,1682812800);
 var fromTime = 0;
 var toTime = 0;
@@ -17,8 +18,9 @@ ValidateDate();
 async function ValidateDate() {
     console.log("Service Started...");
     var _currentDate = new Date();
+    //console.log(_moments().format("DDMMMyy"));
     var day = _currentDate.getDate();
-    if (day == 27) {
+    if (day == 28) {
         var firstDay = new Date(_currentDate.getFullYear(), _currentDate.getMonth(), 1);
         var lastDay = new Date(_currentDate.getFullYear(), _currentDate.getMonth() + 1, 0);
 

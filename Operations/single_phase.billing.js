@@ -8,9 +8,10 @@ const billGen = require("../ViewModels/Bill_Generate");
 const sourcePath = "D:\\Env_Temp_std\\";
 const _common = require("./common.service");
 const Bill_Gen = require('../ViewModels/Bill_Generate');
+const _moments = require("moment");
 module.exports = {
     async GetBillingDetails(from, to) {
-        var _query = "select * from envisage_dev.mtrinstallconfig mic join envisage_dev.mstmeter m on mic.micmtrsrno = m.mtrsrno join envisage_dev.mstmtrmodel md on md.mdlid = m.mtrmodelid join envisage_dev.billinglog bl on bl.blmetersrno = mic.micmtrsrno where bl.bltimestamp >= " + from + " and bl.bltimestamp <=" + to +" and md.mdlphase = 'S'";
+        var _query = "select * from envisage_dev.mtrinstallconfig mic join envisage_dev.mstmeter m on mic.micmtrsrno = m.mtrsrno join envisage_dev.mstmtrmodel md on md.mdlid = m.mtrmodelid join envisage_dev.billinglog bl on bl.blmetersrno = mic.micmtrsrno where bl.bltimestamp >= " + from + " and bl.bltimestamp <=" + to + " and md.mdlphase = 'S'";
         let result;
         //logger.info("Query 1 : " + _query);
         dbConf.pool.open(dbConf.connStr, (err, conn) => {
@@ -43,7 +44,9 @@ async function BillingProcess(blmicmtrmdl, month, year, from, to, fromDate) {
                 }
                 cmrcctoutrfmst = dbConf.runSQL(conn, _query);
                 conn.close();
-
+                console.log("CC Count : " + cmrcctoutrfmst.length + " ---- BL Count : " + blmicmtrmdl.length);
+                logger.info("CC Count : " + cmrcctoutrfmst.length + " ---- BL Count : " + blmicmtrmdl.length);
+                logger.info("Query ccCount : " + _query);
                 if (cmrcctoutrfmst != undefined) {
                     ProcessFileCreation(blmicmtrmdl[i], cmrcctoutrfmst, month, year, from, to, fromDate);
                 }
@@ -152,6 +155,7 @@ async function ProcessSPBill(blmicmtrmdl, cmrcctoutrfmst, from, to, xlFilePath) 
             let _meters;
             let _toudtls;
             let _oldBill;
+            let _slabData = [];
             logger.info("Query 01 : " + _query);
             dbConf.pool.open(dbConf.connStr, (err, conn) => {
                 if (err) {
@@ -166,7 +170,7 @@ async function ProcessSPBill(blmicmtrmdl, cmrcctoutrfmst, from, to, xlFilePath) 
                 _query = "select * from envisage_dev.mstconsumermeterrelation cn join envisage_dev.mstconsumer mc on cn.cmrconsumermasterid = mc.csmrmasterid";
                 _query += " where cn.cmrconsumerid = '" + blmicmtrmdl.micconsumerid + "'";
                 _consumerdets = dbConf.runSQL(conn, _query);
-                _query = "select * from envisage_dev.mstcmrenergydetail c join mtrinstallconfig inst on c.cmreconsumerid = inst.micconsumerid where c.cmreconsumerid = '" + blmicmtrmdl.micconsumerid + "'";
+                _query = "select * from envisage_dev.mstcmrenergydetails c join mtrinstallconfig inst on c.cmreconsumerid = inst.micconsumerid where c.cmreconsumerid = '" + blmicmtrmdl.micconsumerid + "'";
                 _energyDetail = dbConf.runSQL(conn, _query);
                 _query = "select * from envisage_dev.mstconsumermeterrelation cm join envisage_dev.mtrinstallconfig mstin on cm.cmrconsumerid = mstin.micconsumerid";
                 _query += " where mstin.micconsumerid ='" + blmicmtrmdl.micconsumerid + "'";
@@ -176,13 +180,24 @@ async function ProcessSPBill(blmicmtrmdl, cmrcctoutrfmst, from, to, xlFilePath) 
                     _inst = dbConf.runSQL(conn, _query);
                 }
                 _query = "select * from envisage_dev.mstconsumermeterrelation cm join envisage_dev.mtrinstallconfig mstin on cm.cmrconsumerid = mstin.micconsumerid";
-                _query += " join envisage_dev.extrafields_kinesco e on cm.cmrconsumermasterid = e.consumermasterid where mstin.micconsumerid = '" + blmicmtrmdl.micconsumerid + "'";
+                _query += " join informix.extrafields_kinesco e on cm.cmrconsumermasterid = e.consumermasterid where mstin.micconsumerid = '" + blmicmtrmdl.micconsumerid + "'";
+                logger.info("Query : extrafieds : " + _query);
                 let exf = dbConf.runSQL(conn, _query);
+
                 _query = "select * from envisage_dev.ccattouslottrfdetail c join prepmsttariff p on c.tstdtariffid = p.preptrfid where c.tstdconclassid= '" + cmrcctoutrfmst[0].cmracurclassid + "' and c.tstdconcatid ='" + cmrcctoutrfmst[0].cmracurcategoryid + "'";
                 _trfData = dbConf.runSQL(conn, _query);
+                console.log(_trfData);
                 _query = "select ab.* from envisage_dev.prepmsttrffenrgyslabs ab join envisage_dev.prepmsttariff pr on ab.preptdltrfid = pr.preptrfid where ab.preptdltrfid = '" + cmrcctoutrfmst[0].preptrfid + "' and pr.preptrftodate is null order by ab.preptdirecid desc, ab.preptdltrfslotno asc";
                 logger.info("Query _prepSlab : " + _query);
                 _prepSlab = dbConf.runSQL(conn, _query);
+                if (_prepSlab != undefined && _prepSlab.length > 0) {
+                    var _prevSlab = "";
+                    for (var i = 0; i < _prepSlab.length; i++) {
+                        if (!_prevSlab.includes(_prepSlab[i].preptdltrfslotno))
+                            _slabData.push(_prepSlab[i]);
+                        _prevSlab += _prepSlab[i].preptdltrfslotno + ",";
+                    }
+                }
                 _query = "select * from envisage_dev.prepmsttrffdmdslab bc where bc.preptdltrfid = '" + cmrcctoutrfmst[0].preptrfid + "'";
                 _trfdmdslabs = dbConf.runSQL(conn, _query);
                 _query = "select m.mtrsrno,mic.micdcusrno,mm.mdlid,prptr.prepenrgtrftype,prptr.prepdmdtrftype,prptr.prepuntexsdmdchrg,prptr.prepmthfixedchrg,";
@@ -196,6 +211,7 @@ async function ProcessSPBill(blmicmtrmdl, cmrcctoutrfmst, from, to, xlFilePath) 
                 _query += "envisage_dev.prepmsttariff prptr on ccatrf.tstdtariffid = prptr.preptrfid where m.mtrsrno = '" + blmicmtrmdl.micmtrsrno + "' and ccat.cattrtodate is null ";
                 _query += "mic.micconsumerid ='" + blmicmtrmdl.micconsumerid + "' and cmra.cmratodate is null and prptr.preptrftodate is null";
                 var znid = "";
+                logger.log("Meters Query : " + _query);
                 _meters = dbConf.runSQL(conn, _query);
                 //console.log(_meters);
                 if (_meters != undefined && _meters.length > 0) {
@@ -211,7 +227,7 @@ async function ProcessSPBill(blmicmtrmdl, cmrcctoutrfmst, from, to, xlFilePath) 
                     //#region  SP_Bill
 
                     _spBill.RTC_absolute = d.toDateString();
-                    
+
                     if (_mtrinstsp.length > 0) {
                         _spBill.Active_Power = _mtrinstsp[0].misplmdkw == undefined ? 0 : _mtrinstsp[0].misplmdkw;
                         _spBill.Apparent_Power = _mtrinstsp[0].misplmdkva == undefined ? 0 : _mtrinstsp[0].misplmdkva;
@@ -299,7 +315,7 @@ async function ProcessSPBill(blmicmtrmdl, cmrcctoutrfmst, from, to, xlFilePath) 
                     _spBillGen.billnumber = _spBillGen.billMonth + _spBillGen.billYear + connum;
                     _spBillGen.billstdate = firstDay.toString();
                     if (_connecteddate != undefined)
-                        _spBillGen.connecteddate = _connecteddate.toString();
+                        _spBillGen.connecteddate = _connecteddate.getDate() + "-" + _connecteddate.getMonth() + 1 + "-" + _connecteddate.getFullYear();
                     if (_mstrid == undefined)
                         _spBillGen.fixchargunit = "1";
                     if (_inst != undefined)
@@ -340,22 +356,22 @@ async function ProcessSPBill(blmicmtrmdl, cmrcctoutrfmst, from, to, xlFilePath) 
             worksheet.getCell('D9').value = "No";
             worksheet.getCell('D10').value = "Yes";
             worksheet.getCell('D11').value = "No";
-            console.log(_prepSlab);
-            if (_prepSlab != undefined && _prepSlab.length > 0) {
-                worksheet.getCell('D12').value = _prepSlab.length;
+
+            if (_slabData != undefined && _slabData.length > 0) {
+                worksheet.getCell('D12').value = _slabData.length;
                 worksheet.getCell('D13').value = "0";
-                var count = _prepSlab.length;
+                var count = _slabData.length;
                 var rowVal = 14;
                 var i = 0;
                 for (i = 0; i < count; i++) {
                     var cellName = "D" + rowVal;
-                    worksheet.getCell(cellName).value = _prepSlab[i].preptdlenrgunitsfrom;              //Energy Slab 1 : Start Reading
+                    worksheet.getCell(cellName).value = _slabData[i].preptdlenrgunitsfrom;              //Energy Slab 1 : Start Reading
                     rowVal++;
                     cellName = "D" + rowVal;
-                    worksheet.getCell(cellName).value = _prepSlab[i].preptdlenrgunitsto;              //Energy Slab 1 : End Reading
+                    worksheet.getCell(cellName).value = _slabData[i].preptdlenrgunitsto;              //Energy Slab 1 : End Reading
                     rowVal++;
                     cellName = "D" + rowVal;
-                    worksheet.getCell(cellName).value = _prepSlab[i].preptdlenerchrgamt;              //Energy Slab 1 : Rate
+                    worksheet.getCell(cellName).value = _slabData[i].preptdlenerchrgamt;              //Energy Slab 1 : Rate
                     rowVal++;
                 }
                 if (rowVal != 37) {
@@ -372,7 +388,9 @@ async function ProcessSPBill(blmicmtrmdl, cmrcctoutrfmst, from, to, xlFilePath) 
                 }
             }
             else {
+                worksheet.getCell('D12').value = 0;
                 if (_trfData != undefined && _trfData.length > 0) {
+                    //console.log(_trfData);
                     worksheet.getCell('D39').value = _trfData[_trfData.length - 1].preptrfflatdmdrate;
                     worksheet.getCell('D13').value = _trfData[_trfData.length - 1].preptrfflatenerrate;
                     worksheet.getCell('D66').value = _trfData[_trfData.length - 1].prepuntdmdchrg;
@@ -606,7 +624,11 @@ async function ProcessSPBill(blmicmtrmdl, cmrcctoutrfmst, from, to, xlFilePath) 
             //var month = _date.toLocaleString('default', { month: 'short' });
             var month = _date.getMonth() + 1;
             var year = _date.getFullYear();
-            var datestring = month + "/" + day + "/" + year;
+            var dtForms = _moments().format("DD-MMM-yy");
+            // var dateDigit = ("0" + _date.getDate()).slice(-2);
+            // var monthDigit = _date.toLocaleString('en-us', { month: 'short'});
+            // var yearDigit = _date.getFullYear().toLocaleString().substring(3,5);
+            var datestring = dtForms;
             worksheet.getCell("H17").value = datestring;
             worksheet.getCell("H18").value = _spBill.Billing_Index;
             worksheet.getCell("H19").value = _spBill.Signed_Average_PowerFactor;
@@ -718,11 +740,14 @@ async function ProcessSPBill(blmicmtrmdl, cmrcctoutrfmst, from, to, xlFilePath) 
                 worksheet.getCell("L7").value = "";
                 worksheet.getCell("L8").value = "";
             }
-            worksheet.getCell("L10").value = _spBillGen.gstnumber;
+            if (_spBillGen != undefined)
+                worksheet.getCell("L10").value = _spBillGen.gstnumber;
+            else
+                worksheet.getCell("L10").value = "";
             worksheet.getCell("L11").value = _spBillGen.connectedload;
             worksheet.getCell("L12").value = _spBillGen.billnumber;
             worksheet.getCell("L13").value = _spBillGen.connecteddate;
-            if (_oldBill == undefined || _oldBill.length == 0 ) {
+            if (_oldBill == undefined || _oldBill.length == 0) {
                 worksheet.getCell("L20").value = "0";
                 worksheet.getCell("L21").value = "0";
                 worksheet.getCell("L22").value = "0";
@@ -846,9 +871,26 @@ async function ProcessSPBill(blmicmtrmdl, cmrcctoutrfmst, from, to, xlFilePath) 
                 worksheet.getCell("L114").value = _oldBill[0].bltouexpmdkva6;
                 worksheet.getCell("L115").value = _oldBill[0].bltouexpmdkva7;
             }
-           // console.log("Excel Process Complete");
+            // console.log("Excel Process Complete");
             workbook.xlsx.writeFile(xlFilePath);
-            console.log("Single Phase Bill Complete : " + xlFilePath);
+            var worksheetPB = workbook.getWorksheet("Print_Bill");
+            var num = worksheetPB.getCell("I37").value.result;
+            //console.log(num);
+            var a = ['', 'one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven ', 'eight ', 'nine ', 'ten ', 'eleven ', 'twelve ', 'thirteen ', 'fourteen ', 'fifteen ', 'sixteen ', 'seventeen ', 'eighteen ', 'nineteen '];
+            var b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+            if ((num = num.toString()).length > 9) return 'overflow';
+            n = ('000000000' + num).substring(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+            if (!n) return; var str = '';
+            str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + 'crore ' : '';
+            str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + 'lakh ' : '';
+            str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'thousand ' : '';
+            str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'hundred ' : '';
+            str += (n[5] != 0) ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) + 'only ' : '';
+            //console.log(str);
+
+            worksheetPB.getCell("F39").value = str;
+            workbook.xlsx.writeFile(xlFilePath);
+            //console.log("Single Phase Bill Complete : " + xlFilePath);
             return 1;
         });
         //#endregion File Processed
@@ -859,7 +901,21 @@ async function ProcessSPBill(blmicmtrmdl, cmrcctoutrfmst, from, to, xlFilePath) 
     }
 }
 
-
+async function numToWords(num) {
+    console.log(num);
+    var a = ['', 'one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven ', 'eight ', 'nine ', 'ten ', 'eleven ', 'twelve ', 'thirteen ', 'fourteen ', 'fifteen ', 'sixteen ', 'seventeen ', 'eighteen ', 'nineteen '];
+    var b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+    if ((num = num.toString()).length > 9) return 'overflow';
+    n = ('000000000' + num).substring(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+    if (!n) return; var str = '';
+    str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + 'crore ' : '';
+    str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + 'lakh ' : '';
+    str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'thousand ' : '';
+    str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'hundred ' : '';
+    str += (n[5] != 0) ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) + 'only ' : '';
+    console.log(str);
+    return str;
+}
 async function ProcessExcelFile(blmicmtrmdl, cmrcctoutrfmst, _spdata, billGens, _trfData, xlFilePath, _prepSlab, _trfdmdslabs, _toudtls, _prepDtBl, _consumerdets) {
     try {
 
