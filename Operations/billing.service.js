@@ -18,7 +18,7 @@ async function ValidateDate() {
     console.log("Service Started...");
     var _currentDate = new Date();
     var day = _currentDate.getDate();
-    if (day == 27) {
+    if (day == 28) {
         var firstDay = new Date(_currentDate.getFullYear(), _currentDate.getMonth(), 1);
         var lastDay = new Date(_currentDate.getFullYear(), _currentDate.getMonth() + 1, 0);
 
