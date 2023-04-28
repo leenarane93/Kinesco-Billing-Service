@@ -65,6 +65,8 @@ module.exports = {
         Cum_Adjustable_Amount: String,
         Cum_Daily_Fixed_Charge_deduction_Amount: String,
         CumEnergy_Charge_Deduction_Amount: String,
+
+        fixedCharge: String,
     },
 
     TPBill_Model: {
